@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "npx nodemon"
+    "start": "npx nodemon",
+    "dev":"ts-node --files ./src/index.ts"
   },
   "keywords": [],
   "author": "",

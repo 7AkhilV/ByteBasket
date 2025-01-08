@@ -7,42 +7,31 @@ import { BadRequestsException } from '../exceptions/bad-request';
 import { ErrorCode } from '../exceptions/root';
 import { UnprocessableEntity } from '../middlewares/validation';
 import { SignUpSchema } from '../schema/users';
+import { NotFoundException } from '../exceptions/not-found';
 
 export const signup = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  try {
-    SignUpSchema.parse(req.body);
-    const { name, email, password } = req.body;
+  SignUpSchema.parse(req.body);
+  const { name, email, password } = req.body;
 
-    let user = await prismaClient.user.findFirst({ where: { email } });
-    if (user) {
-      next(
-        new BadRequestsException(
-          'User already exists',
-          ErrorCode.USER_ALREADY_EXISTS
-        )
-      );
-    } else {
-      user = await prismaClient.user.create({
-        data: {
-          name,
-          email,
-          password: hashSync(password, 10),
-        },
-      });
-      res.json(user);
-    }
-  } catch (err: any) {
-    next(
-      new UnprocessableEntity(
-        err?.issues,
-        'Unprocessable Entity',
-        ErrorCode.UNPROCESSABLE_ENTITY
-      )
+  let user = await prismaClient.user.findFirst({ where: { email } });
+  if (user) {
+    new BadRequestsException(
+      'User already exists',
+      ErrorCode.USER_ALREADY_EXISTS
     );
+  } else {
+    user = await prismaClient.user.create({
+      data: {
+        name,
+        email,
+        password: hashSync(password, 10),
+      },
+    });
+    res.json(user);
   }
 };
 
@@ -54,27 +43,21 @@ export const login = async (
   const { email, password } = req.body;
 
   const user = await prismaClient.user.findFirst({ where: { email } });
-  //   if (!user || !compareSync(password, user.password)) {
-  //     throw Error('Invalid email or password');
-  //   }
 
   if (!user) {
-    return next(
-      new BadRequestsException(
-        'Invalid email or password',
-        ErrorCode.USER_NOT_FOUND
-      )
-    );
+    throw new NotFoundException('User not found', ErrorCode.USER_NOT_FOUND);
   }
 
   if (!compareSync(password, user.password)) {
-    return next(
-      new BadRequestsException(
-        'Invalid email or password',
-        ErrorCode.INCORRECT_PASSWORD
-      )
+    throw new BadRequestsException(
+      'Invalid email or password',
+      ErrorCode.INCORRECT_PASSWORD
     );
   }
   const token = jwt.sign({ userId: user.id }, JWT_SECRET!);
   res.json({ user, token });
+};
+
+export const me = async (req: Request, res: Response, next: NextFunction) => {
+  res.json(req.user);
 };
