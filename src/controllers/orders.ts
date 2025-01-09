@@ -131,3 +131,76 @@ export const getOrderById = async (req: Request, res: Response) => {
     throw new NotFoundException('Order not found', ErrorCode.ORDER_NOT_FOUND);
   }
 };
+
+export const listAllOrders = async (req: Request, res: Response) => {
+  let whereClause = {};
+  const status = req.query.status;
+
+  if (status) {
+    whereClause = {
+      status,
+    };
+  }
+  const orders = await prismaClient.order.findMany({
+    where: whereClause,
+    skip: Number(req.query.skip) || 0,
+    take: Number(req.query.take) || 5,
+  });
+  res.json(orders);
+};
+
+export const changeStatus = async (req: Request, res: Response) => {
+  try {
+    const order = await prismaClient.order.update({
+      where: {
+        id: Number(req.params.id),
+      },
+      data: {
+        status: req.body.status,
+      },
+    });
+    await prismaClient.orderEvent.create({
+      data: {
+        orderId: order.id,
+        status: req.body.status,
+      },
+    });
+    res.json(order);
+  } catch (err) {
+    throw new NotFoundException('Order not found', ErrorCode.ORDER_NOT_FOUND);
+  }
+};
+
+export const listUserOrders = async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.params.id);
+    if (isNaN(userId)) {
+      return res.status(400).json({ message: 'Invalid user ID' });
+    }
+
+    const status = req.query.status as string;
+    const skip = Math.max(Number(req.query.skip) || 0, 0);
+    const take = Math.min(Math.max(Number(req.query.take) || 5, 1), 50);
+
+    let whereClause: any = { userId };
+    if (status) {
+      whereClause = {
+        ...whereClause,
+        status,
+      };
+    }
+
+    const orders = await prismaClient.order.findMany({
+      where: whereClause,
+      skip,
+      take,
+      orderBy: {
+        createdAt: 'desc', // Sort orders by creation date
+      },
+    });
+
+    res.json(orders);
+  } catch (err) {
+    throw new NotFoundException('Order not found', ErrorCode.ORDER_NOT_FOUND);
+  }
+};

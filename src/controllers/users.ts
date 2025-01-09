@@ -102,3 +102,43 @@ export const listAddress = async (req: Request, res: Response) => {
   });
   res.json(addresses);
 };
+
+export const listUsers = async (req: Request, res: Response) => {
+  const users = await prismaClient.user.findMany({
+    skip: Number(req.query.skip) || 0,
+    take: Number(req.query.take) || 5,
+  });
+  res.json(users);
+};
+
+export const getUserById = async (req: Request, res: Response) => {
+  try {
+    const user = await prismaClient.user.findFirstOrThrow({
+      where: {
+        id: Number(req.params.id),
+      },
+      include: {
+        addresses: true,
+      },
+    });
+    res.json(user);
+  } catch (err) {
+    throw new NotFoundException('User not found', ErrorCode.USER_NOT_FOUND);
+  }
+};
+
+export const changeUserRole = async (req: Request, res: Response) => {
+  try {
+    const user = await prismaClient.user.update({
+      where: {
+        id: Number(req.params.id),
+      },
+      data: {
+        role: req.body.role,
+      },
+    });
+    res.json(user);
+  } catch (err) {
+    throw new NotFoundException('User not found', ErrorCode.USER_NOT_FOUND);
+  }
+};
