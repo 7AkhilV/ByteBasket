@@ -61,7 +61,6 @@ export const listProducts = async (req: Request, res: Response) => {
 };
 
 export const getProductById = async (req: Request, res: Response) => {
-
   try {
     const product = await prismaClient.product.findUnique({
       where: {
@@ -69,10 +68,48 @@ export const getProductById = async (req: Request, res: Response) => {
       },
     });
     res.json(product);
-  } catch (err) { 
+  } catch (err) {
     throw new NotFoundException(
       'Product not found',
       ErrorCode.PRODUCT_NOT_FOUND
     );
+  }
+};
+
+export const searchProducts = async (req: Request, res: Response) => {
+  try {
+    const query = req.query.q?.toString();
+    if (!query) {
+      return res.status(400).json({ message: 'Search query (q) is required' });
+    }
+
+    const products = await prismaClient.product.findMany({
+      where: {
+        OR: [
+          {
+            name: {
+              contains: query,
+            },
+          },
+          {
+            description: {
+              contains: query,
+            },
+          },
+          {
+            tags: {
+              contains: query,
+            },
+          },
+        ],
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };
